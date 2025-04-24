@@ -1,6 +1,7 @@
 use actix_web::{web,App,HttpServer,HttpResponse,Responder};
 use serde::{Deserialize,Serialize};
 use chrono::Local;
+use local_ip_address::local_ip;
 
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
@@ -34,12 +35,15 @@ async fn handle_post(data: web::Json<PostData>) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let local_ip = local_ip();
     println!("Server start:127.0.0.1:8081");
+    println!("Server start:{:?}:8081",local_ip);
     HttpServer::new(|| {
         App::new()
             .route("/api/data", web::post().to(handle_post))
     })
-    .bind("127.0.0.1:8081")?
+    // .bind("127.0.0.1:8081")?
+    .bind("0.0.0.0:8081")?  // 监听所有网卡
     .run()
     .await
 }
