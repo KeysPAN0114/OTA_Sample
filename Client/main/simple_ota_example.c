@@ -135,11 +135,11 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
     return ESP_OK;
 }
 
-static void version_check(void) {
+static void version_check(void *p) {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
     esp_http_client_config_t config = {
-        .host = CONFIG_EXAMPLE_HTTP_ENDPOINT,
-        .path = "/get",
+        .host = "http://192.168.123.7:8081",  //CONFIG_EXAMPLE_HTTP_ENDPOINT
+        .path = "/api/data",
         .query = "esp",
         .event_handler = _http_event_handler,
         .user_data = local_response_buffer,        // Pass address of local buffer to get response
@@ -148,17 +148,20 @@ static void version_check(void) {
     esp_http_client_handle_t client = esp_http_client_init(&config);
     // POST
     const char *post_data = "{\"field1\":\"value1\"}";
-    esp_http_client_set_url(client, "http://"CONFIG_EXAMPLE_HTTP_ENDPOINT"/post");
+    esp_http_client_set_url(client, "http://192.168.123.7:8081/api/data");
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_http_client_set_post_field(client, post_data, strlen(post_data));
-    err = esp_http_client_perform(client);
+    err_t err = esp_http_client_perform(client);
     if (err == ESP_OK) {
         ESP_LOGI(TAG, "HTTP POST Status = %d, content_length = %"PRIu64,
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
     } else {
         ESP_LOGE(TAG, "HTTP POST request failed: %s", esp_err_to_name(err));
+    }
+    while(1) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
 }
 
@@ -282,6 +285,6 @@ void app_main(void)
      */
     esp_wifi_set_ps(WIFI_PS_NONE);
 #endif // CONFIG_EXAMPLE_CONNECT_WIFI
-    version_check();
+    xTaskCreate(&version_check, "http_client", 8192, NULL, 5, NULL);
     // xTaskCreate(&simple_ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
 }

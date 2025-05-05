@@ -6,10 +6,10 @@ use local_ip_address::local_ip;
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
     timetamp: String,
-    firmware: String,
-    version: String,
-    model:String,
-    message: String,
+    // firmware: String,
+    // version: String,
+    // model:String,
+    // message: String,
 }
 
 #[derive(Debug,Serialize,Deserialize)]
@@ -25,10 +25,14 @@ async fn handle_post(data: web::Json<PostData>) -> impl Responder {
     println!{"Client post data:{:?}",data};
     let respons_data = ResponseData {
         timetamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        firmware: data.firmware.clone(),
-        model: data.model.clone(),
-        version: data.version.clone(),
-        message: data.message.clone(),
+        firmware: "1.0.0".to_string(),
+        model: "M5Stack".to_string(),
+        version: "1.0.0".to_string(),
+        message: "success".to_string(),
+        // firmware: data.firmware.clone(),
+        // model: data.model.clone(),
+        // version: data.version.clone(),
+        // message: data.message.clone(),
     };
     HttpResponse::Ok().json(respons_data)
 }
