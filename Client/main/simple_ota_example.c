@@ -147,7 +147,7 @@ static void version_check(void *p) {
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     // POST
-    const char *post_data = "{\"field1\":\"value1\"}";
+    const char *post_data = "{\"timetamp\":\"112\"}";
     esp_http_client_set_url(client, "http://192.168.123.7:8081/api/data");
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
