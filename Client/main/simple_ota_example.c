@@ -101,6 +101,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                 }
             }
             output_len += copy_len;
+            printf("request data:%.*s\r\n", evt->data_len, (char*)evt->data);
         }
 
         break;
