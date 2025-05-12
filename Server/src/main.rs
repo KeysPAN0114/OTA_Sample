@@ -18,6 +18,7 @@ struct ResponseData {
     firmware: String,
     model:String,
     version: String,
+    url: String,
     message: String,
 }
 
@@ -25,10 +26,11 @@ async fn handle_post(data: web::Json<PostData>) -> impl Responder {
     println!{"Client post data:{:?}",data};
     let respons_data = ResponseData {
         timetamp: Local::now().format("%Y-%m-%d %H:%M:%S").to_string(),
-        firmware: "1.0.0".to_string(),
-        model: "M5Stack".to_string(),
+        firmware: "test_firmware".to_string(),
+        model: "ESP32-WROOM".to_string(),
         version: "1.0.0".to_string(),
-        message: "success".to_string(),
+        url:"http://url/file/20250512_225046_Client.bin".to_string(),
+        message: "new versiom".to_string(),
         // firmware: data.firmware.clone(),
         // model: data.model.clone(),
         // version: data.version.clone(),

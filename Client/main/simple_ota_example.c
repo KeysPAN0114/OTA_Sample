@@ -22,6 +22,7 @@
 #include <sys/param.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include "cJSON.h"
 #ifdef CONFIG_EXAMPLE_USE_CERT_BUNDLE
 #include "esp_crt_bundle.h"
 #endif
@@ -35,6 +36,7 @@
 #endif
 
 #define HASH_LEN 32
+#define APP_VERSION "1.0.1"
 
 #ifdef CONFIG_EXAMPLE_FIRMWARE_UPGRADE_BIND_IF
 /* The interface name value can refer to if_desc in esp_netif_defaults.h */
@@ -54,6 +56,26 @@ extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 #define MAX_HTTP_RECV_BUFFER 512
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 
+void simple_ota_example_task(void *pvParameter);
+
+static void parse_json(char *buff) {
+    cJSON *root = NULL;
+    root = cJSON_Parse(buff);
+    if(root == NULL) {
+        ESP_LOGE(TAG, "cJSON_CreateObject failed");
+        return;
+    }
+    cJSON *firmware = cJSON_GetObjectItemCaseSensitive(root,"firmware");
+    cJSON *model = cJSON_GetObjectItemCaseSensitive(root,"model");
+    cJSON *version = cJSON_GetObjectItemCaseSensitive(root,"version");
+    cJSON *url = cJSON_GetObjectItemCaseSensitive(root,"url");
+    if(firmware->valuestring != NULL && model->valuestring != NULL && version->valuestring != NULL\
+    && url->valuestring != NULL) {
+        printf("firmware:%s\r\n model:%s\r\n version:%s\r\n url:%s\r\n", firmware->valuestring,model->valuestring, version->valuestring, url->valuestring);
+        
+    }
+    cJSON_Delete(root);
+}
 esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 {
     static char *output_buffer;  // Buffer to store response of http request from event handler
@@ -101,7 +123,13 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                 }
             }
             output_len += copy_len;
-            printf("request data:%.*s\r\n", evt->data_len, (char*)evt->data);
+            char *buffer = malloc(evt->data_len + 1);
+            memcpy(buffer, evt->data, evt->data_len);
+            buffer[evt->data_len] = '\0';
+            printf("request data:%s\r\n", buffer);
+            parse_json(buffer);
+            free(buffer);
+            // printf("request data:%.*s\r\n", evt->data_len, (char*)evt->data);    //打印指定长度的字符串
         }
 
         break;
@@ -286,6 +314,8 @@ void app_main(void)
      */
     esp_wifi_set_ps(WIFI_PS_NONE);
 #endif // CONFIG_EXAMPLE_CONNECT_WIFI
+    printf("      ====================\r\n\
+        =====Versiom:%s=====\n",APP_VERSION);
     xTaskCreate(&version_check, "http_client", 8192, NULL, 5, NULL);
     // xTaskCreate(&simple_ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
 }
