@@ -21,6 +21,7 @@
 #include "string.h"
 #include <sys/param.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <ctype.h>
 #include "cJSON.h"
 #ifdef CONFIG_EXAMPLE_USE_CERT_BUNDLE
@@ -52,12 +53,30 @@ extern const uint8_t server_cert_pem_start[] asm("_binary_ca_cert_pem_start");
 extern const uint8_t server_cert_pem_end[] asm("_binary_ca_cert_pem_end");
 
 #define OTA_URL_SIZE 256
+char url_buf[OTA_URL_SIZE] = {0};
+uint8_t http_flag = 0;
 
 #define MAX_HTTP_RECV_BUFFER 512
 #define MAX_HTTP_OUTPUT_BUFFER 2048
 
 void simple_ota_example_task(void *pvParameter);
 
+static int char2int(const char *str) {
+    return atoi(str);
+}
+
+static uint8_t compare_versionsa(char *version1, char *version2) {
+    int v1[3] = {0}, v2[3] = {0};
+    sscanf(version1, "%d.%d.%d", &v1[0], &v1[1], &v1[2]);
+    sscanf(version2, "%d.%d.%d", &v2[0], &v2[1], &v2[2]);
+    // 逐个比较版本号
+    for (int i = 0; i < 3; ++i) {
+        if (v1[i] > v2[i]) return 1;  // version1 > version2
+        if (v1[i] < v2[i]) return -1; // version1 < version2
+    }
+    
+    return 0; // version1 == version2
+}
 static void parse_json(char *buff) {
     cJSON *root = NULL;
     root = cJSON_Parse(buff);
@@ -72,7 +91,10 @@ static void parse_json(char *buff) {
     if(firmware->valuestring != NULL && model->valuestring != NULL && version->valuestring != NULL\
     && url->valuestring != NULL) {
         printf("firmware:%s\r\n model:%s\r\n version:%s\r\n url:%s\r\n", firmware->valuestring,model->valuestring, version->valuestring, url->valuestring);
-        
+        if (compare_versionsa(APP_VERSION,version->valuestring) == 1) {
+            memcpy(url_buf,url->valuestring,strlen(url->valuestring));
+            xTaskCreate(&simple_ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
+        }
     }
     cJSON_Delete(root);
 }
@@ -113,7 +135,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                     output_buffer = (char *) malloc(buffer_len);
                     output_len = 0;
                     if (output_buffer == NULL) {
-                        ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
+                        // ESP_LOGE(TAG, "Failed to allocate memory for output buffer");
                         return ESP_FAIL;
                     }
                 }
@@ -123,12 +145,15 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
                 }
             }
             output_len += copy_len;
-            char *buffer = malloc(evt->data_len + 1);
-            memcpy(buffer, evt->data, evt->data_len);
-            buffer[evt->data_len] = '\0';
-            printf("request data:%s\r\n", buffer);
-            parse_json(buffer);
-            free(buffer);
+            if (http_flag == 1) {
+                char *buffer = malloc(evt->data_len + 1);
+                memcpy(buffer, evt->data, evt->data_len);
+                buffer[evt->data_len] = '\0';
+                printf("request data:%s\r\n", buffer);
+                parse_json(buffer);
+                free(buffer);
+                http_flag = 0;
+            }
             // printf("request data:%.*s\r\n", evt->data_len, (char*)evt->data);    //打印指定长度的字符串
         }
 
@@ -166,6 +191,7 @@ esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 
 static void version_check(void *p) {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
+    http_flag = 1;
     esp_http_client_config_t config = {
         .host = "http://192.168.123.7:8081",  //CONFIG_EXAMPLE_HTTP_ENDPOINT
         .path = "/api/data",
@@ -197,18 +223,8 @@ static void version_check(void *p) {
 void simple_ota_example_task(void *pvParameter)
 {
     ESP_LOGI(TAG, "Starting OTA example task");
-#ifdef CONFIG_EXAMPLE_FIRMWARE_UPGRADE_BIND_IF
-    esp_netif_t *netif = get_example_netif_from_desc(bind_interface_name);
-    if (netif == NULL) {
-        ESP_LOGE(TAG, "Can't find netif from interface description");
-        abort();
-    }
-    struct ifreq ifr;
-    esp_netif_get_netif_impl_name(netif, ifr.ifr_name);
-    ESP_LOGI(TAG, "Bind interface name is %s", ifr.ifr_name);
-#endif
     esp_http_client_config_t config = {
-        .url = CONFIG_EXAMPLE_FIRMWARE_UPGRADE_URL,
+        .url = url_buf,
 #ifdef CONFIG_EXAMPLE_USE_CERT_BUNDLE
         .crt_bundle_attach = esp_crt_bundle_attach,
 #else
@@ -220,24 +236,6 @@ void simple_ota_example_task(void *pvParameter)
         .if_name = &ifr,
 #endif
     };
-
-#ifdef CONFIG_EXAMPLE_FIRMWARE_UPGRADE_URL_FROM_STDIN
-    char url_buf[OTA_URL_SIZE];
-    if (strcmp(config.url, "FROM_STDIN") == 0) {
-        example_configure_stdin_stdout();
-        fgets(url_buf, OTA_URL_SIZE, stdin);
-        int len = strlen(url_buf);
-        url_buf[len - 1] = '\0';
-        config.url = url_buf;
-    } else {
-        ESP_LOGE(TAG, "Configuration mismatch: wrong firmware upgrade image url");
-        abort();
-    }
-#endif
-
-#ifdef CONFIG_EXAMPLE_SKIP_COMMON_NAME_CHECK
-    config.skip_cert_common_name_check = true;
-#endif
 
     esp_https_ota_config_t ota_config = {
         .http_config = &config,
