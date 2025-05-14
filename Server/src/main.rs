@@ -3,6 +3,7 @@ use serde::{Deserialize,Serialize};
 use chrono::Local;
 use local_ip_address::local_ip;
 use semver::Version;
+use std::cmp::Ordering;
 
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
@@ -26,7 +27,11 @@ struct ResponseData {
 fn compare(version1: &str, version2: &str) -> i32 { 
         let com_version1 = Version::parse(version1).expect("Invalid version");
         let com_version2 = Version::parse(version2).expect("Invalid version");
-        com_version1.cmp(&com_version2)
+        match com_version1.cmp(&com_version2) {
+            Ordering::Less => -1,
+            Ordering::Equal => 0,
+            Ordering::Greater => 1,
+        }
     }
 
 async fn handle_post(data: web::Json<PostData>) -> impl Responder {
