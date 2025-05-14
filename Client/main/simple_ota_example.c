@@ -37,7 +37,7 @@
 #endif
 
 #define HASH_LEN 32
-#define APP_VERSION "1.0.1"
+#define APP_VERSION "1.0.0"
 
 #ifdef CONFIG_EXAMPLE_FIRMWARE_UPGRADE_BIND_IF
 /* The interface name value can refer to if_desc in esp_netif_defaults.h */
@@ -202,7 +202,7 @@ static void version_check(void *p) {
     };
     esp_http_client_handle_t client = esp_http_client_init(&config);
     // POST
-    const char *post_data = "{\"timetamp\":\"112\"}";
+    const char *post_data = "{\"firmware\":\"test_firmware\",\"model\":\"esp32\",\"version\":\"1.0.0\"}";
     esp_http_client_set_url(client, "http://192.168.123.7:8081/api/data");
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
@@ -312,8 +312,7 @@ void app_main(void)
      */
     esp_wifi_set_ps(WIFI_PS_NONE);
 #endif // CONFIG_EXAMPLE_CONNECT_WIFI
-    printf("      ====================\r\n\
-        =====Versiom:%s=====\n",APP_VERSION);
+    printf("\r===================\n===Versiom:%s===\n===================\n",APP_VERSION);
     xTaskCreate(&version_check, "http_client", 8192, NULL, 5, NULL);
     // xTaskCreate(&simple_ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
 }

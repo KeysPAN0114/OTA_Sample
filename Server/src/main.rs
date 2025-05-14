@@ -2,13 +2,14 @@ use actix_web::{web,App,HttpServer,HttpResponse,Responder};
 use serde::{Deserialize,Serialize};
 use chrono::Local;
 use local_ip_address::local_ip;
+use semver::Version;
 
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
-    timetamp: String,
-    // firmware: String,
-    // version: String,
-    // model:String,
+    // timetamp: String,
+    firmware: String,
+    version: String,
+    model:String,
     // message: String,
 }
 
@@ -22,6 +23,12 @@ struct ResponseData {
     message: String,
 }
 
+fn compare(version1: &str, version2: &str) -> i32 { 
+        let com_version1 = Version::parse(version1).expect("Invalid version");
+        let com_version2 = Version::parse(version2).expect("Invalid version");
+        com_version1.cmp(&com_version2)
+    }
+
 async fn handle_post(data: web::Json<PostData>) -> impl Responder {
     println!{"Client post data:{:?}",data};
     let respons_data = ResponseData {
@@ -29,7 +36,7 @@ async fn handle_post(data: web::Json<PostData>) -> impl Responder {
         firmware: "test_firmware".to_string(),
         model: "ESP32-WROOM".to_string(),
         version: "1.0.1".to_string(),
-        url:"http://url//file/20250512_225046_Client.bin".to_string(),
+        url:"http://url/file/20250512_225046_Client.bin".to_string(),
         message: "new versiom".to_string(),
         // firmware: data.firmware.clone(),
         // model: data.model.clone(),
