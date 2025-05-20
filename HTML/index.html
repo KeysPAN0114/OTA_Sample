@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust POST 示例 (Nginx代理)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #response {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 50px;
+            white-space: pre-wrap;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Rust 后端交互演示 文件上传(通过Nginx代理)</h1>
+
+    <div class="section">
+        <h2>发送JSON数据</h2>
+        <button id="postButton">发送POST请求</button>
+    </div>
+
+    <div class="section">
+        <h2>上传文件</h2>
+        <input type="file" id="fileInput">
+        <button id="uploadButton">上传文件</button>
+    </div>
+
+    <div id="response">响应将显示在这里...</div>
+
+    <script>
+        // JSON POST 请求
+        document.getElementById('postButton').addEventListener('click', async () => {
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = "发送JSON请求中...";
+            
+            try {
+                const data = {
+                    message: "Hello from HTML via Nginx!",
+                    timestamp: new Date().toISOString()
+                };
+                
+                const response = await fetch('/api/data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                responseDiv.textContent = `服务器响应:\n${JSON.stringify(result, null, 2)}`;
+            } catch (error) {
+                responseDiv.textContent = `请求失败: ${error.message}`;
+                console.error('Error:', error);
+            }
+        });
+
+        // 文件上传
+        document.getElementById('uploadButton').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileInput');
+            const responseDiv = document.getElementById('response');
+            
+            if (fileInput.files.length === 0) {
+                responseDiv.textContent = "请先选择文件";
+                return;
+            }
+
+            responseDiv.textContent = "上传文件中...";
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData,
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                responseDiv.textContent = `文件上传成功:\n${JSON.stringify(result, null, 2)}`;
+            } catch (error) {
+                responseDiv.textContent = `上传失败: ${error.message}`;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>
