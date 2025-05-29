@@ -5,8 +5,10 @@ edition = "2024"
 
 [dependencies]
 actix-web = "4"
+actix-multipart = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
 serde_json = "1.0"
 local-ip-address = "0.5"
 semver = "1.0"
+futures-util = "0.3"

@@ -71,8 +71,8 @@ static uint8_t compare_versionsa(char *version1, char *version2) {
     sscanf(version2, "%d.%d.%d", &v2[0], &v2[1], &v2[2]);
     // 逐个比较版本号
     for (int i = 0; i < 3; ++i) {
-        if (v1[i] > v2[i]) return 1;  // version1 > version2
-        if (v1[i] < v2[i]) return -1; // version1 < version2
+        if (v1[i] > v2[i]) return -1;  // version1 > version2
+        if (v1[i] < v2[i]) return 1; // version1 < version2
     }
     
     return 0; // version1 == version2
@@ -193,8 +193,8 @@ static void version_check(void *p) {
     char local_response_buffer[MAX_HTTP_OUTPUT_BUFFER] = {0};
     http_flag = 1;
     esp_http_client_config_t config = {
-        .host = "http://192.168.123.7:8081",  //CONFIG_EXAMPLE_HTTP_ENDPOINT
-        .path = "/api/data",
+        .host = CONFIG_EXAMPLE_FIRMWARE_UPGRADE_URL,  //CONFIG_EXAMPLE_HTTP_ENDPOINT
+        .path = "/",
         .query = "esp",
         .event_handler = _http_event_handler,
         .user_data = local_response_buffer,        // Pass address of local buffer to get response
@@ -203,7 +203,9 @@ static void version_check(void *p) {
     esp_http_client_handle_t client = esp_http_client_init(&config);
     // POST
     const char *post_data = "{\"firmware\":\"test_firmware\",\"model\":\"esp32\",\"version\":\"1.0.0\"}";
-    esp_http_client_set_url(client, "http://192.168.123.7:8081/api/data");
+    char uri[128] = {0};
+    sprintf(uri, "%s/api/data", CONFIG_EXAMPLE_FIRMWARE_UPGRADE_URL);
+    esp_http_client_set_url(client, uri);
     esp_http_client_set_method(client, HTTP_METHOD_POST);
     esp_http_client_set_header(client, "Content-Type", "application/json");
     esp_http_client_set_post_field(client, post_data, strlen(post_data));
@@ -220,6 +222,36 @@ static void version_check(void *p) {
     }
 }
 
+esp_err_t __http_event_handler(esp_http_client_event_t *evt)
+{
+    switch (evt->event_id) {
+    case HTTP_EVENT_ERROR:
+        ESP_LOGD(TAG, "HTTP_EVENT_ERROR");
+        break;
+    case HTTP_EVENT_ON_CONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_CONNECTED");
+        break;
+    case HTTP_EVENT_HEADER_SENT:
+        ESP_LOGD(TAG, "HTTP_EVENT_HEADER_SENT");
+        break;
+    case HTTP_EVENT_ON_HEADER:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_HEADER, key=%s, value=%s", evt->header_key, evt->header_value);
+        break;
+    case HTTP_EVENT_ON_DATA:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_DATA, len=%d", evt->data_len);
+        break;
+    case HTTP_EVENT_ON_FINISH:
+        ESP_LOGD(TAG, "HTTP_EVENT_ON_FINISH");
+        break;
+    case HTTP_EVENT_DISCONNECTED:
+        ESP_LOGD(TAG, "HTTP_EVENT_DISCONNECTED");
+        break;
+    case HTTP_EVENT_REDIRECT:
+        ESP_LOGD(TAG, "HTTP_EVENT_REDIRECT");
+        break;
+    }
+    return ESP_OK;
+}
 void simple_ota_example_task(void *pvParameter)
 {
     ESP_LOGI(TAG, "Starting OTA example task");
@@ -230,7 +262,7 @@ void simple_ota_example_task(void *pvParameter)
 #else
         .cert_pem = (char *)server_cert_pem_start,
 #endif /* CONFIG_EXAMPLE_USE_CERT_BUNDLE */
-        .event_handler = _http_event_handler,
+        .event_handler = __http_event_handler,
         .keep_alive_enable = true,
 #ifdef CONFIG_EXAMPLE_FIRMWARE_UPGRADE_BIND_IF
         .if_name = &ifr,

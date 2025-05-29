@@ -54,6 +54,14 @@
         <button id="uploadButton">上传文件</button>
     </div>
 
+    <div class = "section">
+        <h2>MQTT推送OTA包</h2>
+        <p>
+            需要推送的模组型号：<input type = "text" id = "ota_text">
+        </p>
+        <button id = "otaPushBt">推送</button>
+    </div>
+
     <div id="response">响应将显示在这里...</div>
 
     <script>
@@ -107,7 +115,6 @@
                     method: 'POST',
                     body: formData,
                 });
-                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -116,6 +123,40 @@
             } catch (error) {
                 responseDiv.textContent = `上传失败: ${error.message}`;
                 console.error('Error:', error);
+            }
+        });
+
+        //OTA包推送
+        document.getElementById('otaPushBt').addEventListener('click',async() => {
+            const Moduletype = document.getElementById('ota_text').value.trim();
+            const responseDiv = document.getElementById('response');
+            
+            if(Moduletype == ""){
+                responseDiv.textContent = "请输入模组型号";
+                return;
+            }
+            responseDiv.textContent = "正在推送OTA包...";
+            try {
+                const data = {
+                    module_type:Moduletype,
+                    timestamp: new Date().toISOString()
+                };
+                const response = await fetch('/api/data',{
+                    method:'POST',
+                    headers:{
+                        'Content-Type':'application/json',
+                    },
+                    body : JSON.stringify(data),
+                });
+                if(!response.ok) {
+                    throw new Error(`HTTP error! status:${response.status}`);
+                }
+                const result = await response.json();
+                responseDiv.textContent = `服务器返回: \n ${JSON.stringify(result,null,2)}`;
+
+            } catch(error) {
+                responseDiv.textContent = `推送失败：${error.message}`;
+                console.error('Error:',error);
             }
         });
     </script>
