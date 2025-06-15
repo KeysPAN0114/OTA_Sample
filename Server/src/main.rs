@@ -161,7 +161,7 @@ async fn main() -> std::io::Result<()> {
             .route("/api/data", web::post().to(handle_post))
             .route("/api/upload",web::post().to(upload_file))
     })
-    // .bind("127.0.0.1:8081")?
+    // .bind("127.0.0.1:8080")?
     .bind("0.0.0.0:8081")?  // 监听所有网卡
     .run()
     .await
