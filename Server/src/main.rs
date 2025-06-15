@@ -2,7 +2,7 @@ use actix_web::{web,App,HttpServer,HttpResponse,Responder};
 use serde::{Deserialize,Serialize};
 use chrono::Local;
 use local_ip_address::local_ip;
-use semver::Version;
+use semver::{Op, Version};
 use std::cmp::Ordering;
 use std::ops::Sub;
 use actix_multipart::Multipart;
@@ -10,6 +10,8 @@ use futures_util::StreamExt;
 use std::fs::File;
 use std::io::Write;
 use std::thread;
+
+const Acces_ip:&str = "192.168.1.1";
 
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
@@ -43,6 +45,7 @@ struct ResponseDataHtml {
     server_time: String,
     request_via: String,
     file_path: Option<String>,
+    url: String,
 }
 
 /*
@@ -66,7 +69,7 @@ async fn handle_post(data: web::Json<PostData>) -> impl Responder {
         firmware: "test_firmware".to_string(),
         model: "ESP32-WROOM".to_string(),
         version: "1.0.1".to_string(),
-        url:"http://39.108.141.181/file/20250512_225046_Client.bin".to_string(),
+        url:"http://127.0.0.1/file/20250512_225046_Client.bin".to_string(),
         message: "new versiom".to_string(),
         // firmware: data.firmware.clone(),
         // model: data.model.clone(),
@@ -93,6 +96,7 @@ fn get_upload_dir() -> String {
 }
 async fn upload_file(mut payload: Multipart) -> impl Responder {
     let mut file_path = None;
+    let mut url_get:Option<String> = None;
 
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -133,14 +137,15 @@ async fn upload_file(mut payload: Multipart) -> impl Responder {
         }
 
         file_path = Some(save_path);
+        url_get = Some(format!("http://{}/file/{}_{}",Acces_ip,timestamp,safe_filename));
     }
-
     HttpResponse::Ok().json(ResponseDataHtml {
         status: "success".to_string(),
         received_message: "File uploaded successfully".to_string(),
         server_time: Local::now().to_rfc3339(),
         request_via: "Rust backend".to_string(),
         file_path,
+        url:url_get.expect("reason").to_string(),
     })
 }
 
