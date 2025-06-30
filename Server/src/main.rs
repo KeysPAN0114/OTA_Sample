@@ -4,14 +4,15 @@ use chrono::Local;
 use local_ip_address::local_ip;
 use semver::{Op, Version};
 use std::cmp::Ordering;
-use std::ops::Sub;
+use std::path::Path;
 use actix_multipart::Multipart;
 use futures_util::StreamExt;
 use std::fs::File;
-use std::io::Write;
-use std::thread;
+use std::io::{self,BufRead,BufReader,Write};
 
 const Acces_ip:&str = "192.168.1.1";
+
+const RECORD_FILE: &str = "upload_records.txt";
 
 #[derive(Debug,Serialize,Deserialize)]
 struct PostData {
@@ -53,14 +54,57 @@ struct ResponseDataHtml {
 */
 #[warn(dead_code)]
 fn compare(version1: &str, version2: &str) -> i32 { 
-        let com_version1 = Version::parse(version1).expect("Invalid version");
-        let com_version2 = Version::parse(version2).expect("Invalid version");
-        match com_version1.cmp(&com_version2) {
-            Ordering::Less => -1,
-            Ordering::Equal => 0,
-            Ordering::Greater => 1,
+    let com_version1 = Version::parse(version1).expect("Invalid version");
+    let com_version2 = Version::parse(version2).expect("Invalid version");
+    match com_version1.cmp(&com_version2) {
+        Ordering::Less => -1,
+        Ordering::Equal => 0,
+        Ordering::Greater => 1,
+    }
+}
+
+fn get_next_version()->io::Result<u32> {
+    match get_latest_version() {
+        Ok(version) => Ok(version + 1),
+        Err(_) => Ok(1),
+    }
+}
+
+/// 获取最新的版本号
+fn get_latest_version() -> io::Result<u32> {
+    let bin_file = format!("{}/{}", get_upload_dir(), RECORD_FILE);
+    if !Path::new(&bin_file).exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "记录文件不存在",
+        ));
+    }
+
+    let file = File::open(&bin_file)?;
+    let reader = BufReader::new(file);
+
+    let mut latest_version = 0;
+    
+    for line in reader.lines() {
+        let line = line?;
+        if let Some(version_str) = line.split(':').next() {
+            if let Ok(version) = version_str.parse::<u32>() {
+                if version > latest_version {
+                    latest_version = version;
+                }
+            }
         }
     }
+
+    Ok(latest_version)
+}
+
+fn record_upload(file_name: &str,version:u32) -> io::Result<()> {
+    let path = format!("{}/{}", get_upload_dir(), RECORD_FILE);
+    let mut file = File::create(path)?;
+    writeln!(file, "{} {}", file_name, version)?;
+    Ok(())
+}
 
 async fn handle_post(data: web::Json<PostData>) -> impl Responder {
     println!{"Client post data:{:?}",data};
